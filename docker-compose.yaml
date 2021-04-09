@@ -1,0 +1,32 @@
+version: '3'
+services:
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+    restart: always
+    healthcheck:
+      test: "/usr/bin/mysql --user=root --password=password --execute \"SHOW DATABASES;\""
+      interval: 5s
+      timeout: 1s
+      retries: 20
+
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/dbinit:/docker-entrypoint-initdb.d:ro
+      - ./mysql/var/db/data:/var/lib/mysql
+  web:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    entrypoint: /usr/local/bin/MangaLibrary
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./library:/library
+
