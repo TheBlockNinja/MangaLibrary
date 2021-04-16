@@ -2,7 +2,7 @@ package main
 
 import (
 	"MangaLibrary/src/internal/dao"
-	"MangaLibrary/src/internal/process"
+	"MangaLibrary/src/internal/jobs"
 	"MangaLibrary/src/internal/server"
 	"os"
 
@@ -39,11 +39,16 @@ func app(c *cli.Context, logger *zap.Logger) error {
 	}
 	webComponentDao := &dao.WebComponentDAO{DB: db}
 	jobDao := &dao.JobDAO{DB: db}
-	pj := process.ProcessJobs{
+	pj := jobs.ProcessJobs{
 		Logger:  logger,
-		MaxJobs: 1,
+		MaxJobs: 2,
 		JobDAO:  jobDao,
 		CompDao: webComponentDao,
+	}
+	err = pj.ResetFailedJobs()
+	if err != nil {
+		logger.Error("Failed loading DB", zap.Error(err))
+		return err
 	}
 	go func() {
 		pj.Start()

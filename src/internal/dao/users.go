@@ -33,6 +33,7 @@ func (s *UsersDAO) UpdateUserAPIKey(user *dto.User) error {
 	user.APIKey = newAPIKey
 	return nil
 }
+
 func GenerateAPIKey(length int) string {
 	rand.Seed(time.Now().UnixNano())
 	chars := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ" +
@@ -47,7 +48,7 @@ func GenerateAPIKey(length int) string {
 
 func (s *UsersDAO) GetUser(apiKey string) (*dto.User, error) {
 	user := &dto.User{}
-	err := s.DB.Get(user, "select * from manga_library.users where api_key = ?", apiKey)
+	err := s.DB.Get(user, "select * from manga_library.users where api_key = ? and is_active = 1", apiKey)
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +57,20 @@ func (s *UsersDAO) GetUser(apiKey string) (*dto.User, error) {
 
 func (s *UsersDAO) GetUserForName(name, password string) (*dto.User, error) {
 	user := &dto.User{}
-	err := s.DB.Get(user, "select * from manga_library.users where name = ? and password = ?", name, password)
+	err := s.DB.Get(user, "select * from manga_library.users where name = ? and password = ? and is_active = 1", name, password)
 	if err != nil {
 		return nil, err
 	}
+	err = s.UpdateUser(user)
+	user.Password = "censored"
 	return user, nil
+}
+
+func (s *UsersDAO) UpdateUser(user *dto.User) error {
+	query := "update manga_library.users set current_jobs = ?,last_login=?,is_active=?,password=?,name=? where id = ? and api_key = ?"
+	_, err := s.DB.Exec(query, user.CurrentJobs, time.Now(), user.IsActive, user.Password, user.Name, user.ID, user.APIKey)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -77,6 +77,10 @@ CREATE TABLE manga_library.books
 (
     id int(11) not null auto_increment,
     user_id int(11) not null,
+    site_id int(11) not null,
+    is_public bool default false,
+    views int(32) default 0,
+    downloads int(16) default 0,
     job_id int(11) not null,
     chapter varchar(1024) default '',
     volume varchar(1024) default '',
@@ -88,4 +92,19 @@ CREATE TABLE manga_library.books
     pages int default 0,
     primary key (id,user_id),
     foreign key (user_id) REFERENCES manga_library.users (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
+
+
+
+CREATE TABLE manga_library.library
+(
+    user_id int(11) not null,
+    book_id int(11) not null,
+    collection varchar(512) default 'default',
+    progress int(11) default 0,
+    rating int(10) default 0,
+    favorite bool default false,
+    primary key (user_id,book_id),
+    foreign key (user_id) REFERENCES manga_library.users (id),
+    foreign key (book_id) REFERENCES manga_library.books (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;

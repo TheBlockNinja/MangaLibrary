@@ -1,10 +1,9 @@
-package driver
+package jobs
 
 import (
 	"MangaLibrary/src/internal/converter"
 	"MangaLibrary/src/internal/dao"
 	"MangaLibrary/src/internal/dto"
-	"MangaLibrary/src/internal/jobs"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -161,6 +160,7 @@ func (e *Elements) GetMetaData(Parser *WebParser.Parser, c *Component) error {
 }
 func (e *Elements) GetAllMetaData() []map[string]*MetaData {
 	output := []map[string]*MetaData{}
+
 	for _, v := range e.MetaData {
 		output = append(output, v...)
 	}
@@ -199,7 +199,7 @@ func FlattenText(h *WebParser.HTMLData) string {
 	}
 	return output
 }
-func (e *Elements) Download(parser *WebParser.Parser, c *Component, path string, job *jobs.Job, jobDAO *dao.JobDAO, book *dto.Books) error {
+func (e *Elements) Download(parser *WebParser.Parser, c *Component, path string, job *Job, jobDAO *dao.JobDAO, book *dto.Books) error {
 	if !c.IsDownload {
 		return nil
 	}
@@ -233,6 +233,9 @@ func (e *Elements) Download(parser *WebParser.Parser, c *Component, path string,
 	}
 	if jobDAO != nil && len(e.Data[parser.URL]) == 1 {
 		book.JobId = job.Id
+		book.SiteID = job.SiteID
+		book.Views = 0
+		book.Downloads = 0
 		booksDAO := dao.BooksDAO{DB: jobDAO.DB}
 		err := booksDAO.NewBook(book)
 		if err != nil {
@@ -250,7 +253,7 @@ func (e *Elements) GetTotalElements() int {
 	return total
 }
 
-func (e *Elements) DownloadElements(parser *WebParser.Parser, c *Component, path string, job *jobs.Job, jobDAO *dao.JobDAO, book *dto.Books) error {
+func (e *Elements) DownloadElements(parser *WebParser.Parser, c *Component, path string, job *Job, jobDAO *dao.JobDAO, book *dto.Books) error {
 	DownloadParser := WebParser.NewParser(parser.Logger)
 	page_count := 0
 	if !c.IsDownload {
@@ -261,15 +264,16 @@ func (e *Elements) DownloadElements(parser *WebParser.Parser, c *Component, path
 	book.FilePath = NewPath
 	book.Chapter = e.GetElementData(parser, "chapter")
 	book.Volume = e.GetElementData(parser, "volume")
-	book.Description = e.GetElementData(parser, "description")
+	if book.Description == "" {
+		book.Description = e.GetElementData(parser, "description")
+	}
 
 	if v, found := e.Data[parser.URL]; found {
 		for _, d := range v {
 			job.CurrentProgress += 1
 			job.UpdateTime()
-			if jobDAO != nil {
-				job.UpdateDB(jobDAO)
-			}
+			job.UpdateDB(jobDAO)
+
 			link, err := d.GetLink(c.LinkAttributes, parser)
 			if err != nil {
 				continue
@@ -329,12 +333,18 @@ func (e *Elements) DownloadElements(parser *WebParser.Parser, c *Component, path
 	}
 	if jobDAO != nil && len(e.Data[parser.URL]) > 1 {
 		booksDAO := dao.BooksDAO{DB: jobDAO.DB}
-		book.Name = "_"
+		book.JobId = job.Id
+		book.SiteID = job.SiteID
+		book.Views = 0
+		book.Downloads = 0
+		if book.Name == "" {
+			book.Name = "_"
+		}
 		err := booksDAO.NewBook(book)
 		if err != nil {
 			parser.Logger.Error("failed creating new book", zap.Error(err))
 		}
-
+		book.CoverImage = ""
 	}
 	return nil
 }

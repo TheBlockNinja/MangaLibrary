@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 type Response struct {
@@ -35,6 +36,14 @@ func SendData(data interface{}, errorMessage string, w http.ResponseWriter) {
 		SendError(err.Error(), w)
 		return
 	}
+}
+
+func SendFile(file string, download bool, w http.ResponseWriter, r *http.Request) {
+	if download {
+		w.Header().Set("Content-Disposition", "attachment; filename="+strconv.Quote(file))
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+	http.ServeFile(w, r, file)
 }
 
 func ServeSocketData() {
