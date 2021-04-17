@@ -6,6 +6,7 @@ import (
 	"MangaLibrary/src/internal/pdf"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -199,6 +200,22 @@ func (h BookHandler) GetBookPDF(w http.ResponseWriter, r *http.Request) {
 				filename += " " + b.Volume
 			}
 			err = os.MkdirAll(filename, os.ModePerm)
+			if err != nil {
+				SendError(err.Error(), w)
+				return
+			}
+			files, err := ioutil.ReadDir(b.FilePath)
+			if err != nil {
+				SendError(err.Error(), w)
+				return
+			}
+			b.Pages = len(files)
+			if download {
+				b.Downloads += 1
+			} else {
+				b.Views += 1
+			}
+			err = h.Book.UpdateBook(b, b.UserID)
 			if err != nil {
 				SendError(err.Error(), w)
 				return

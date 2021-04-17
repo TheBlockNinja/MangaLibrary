@@ -236,6 +236,7 @@ func (e *Elements) Download(parser *WebParser.Parser, c *Component, path string,
 		book.SiteID = job.SiteID
 		book.Views = 0
 		book.Downloads = 0
+		book.Pages = len(e.Data[parser.URL])
 		booksDAO := dao.BooksDAO{DB: jobDAO.DB}
 		err := booksDAO.NewBook(book)
 		if err != nil {
@@ -267,13 +268,13 @@ func (e *Elements) DownloadElements(parser *WebParser.Parser, c *Component, path
 	if book.Description == "" {
 		book.Description = e.GetElementData(parser, "description")
 	}
-
+	pages := 0
 	if v, found := e.Data[parser.URL]; found {
 		for _, d := range v {
 			job.CurrentProgress += 1
 			job.UpdateTime()
 			job.UpdateDB(jobDAO)
-
+			pages += 1
 			link, err := d.GetLink(c.LinkAttributes, parser)
 			if err != nil {
 				continue
@@ -340,6 +341,7 @@ func (e *Elements) DownloadElements(parser *WebParser.Parser, c *Component, path
 		if book.Name == "" {
 			book.Name = "_"
 		}
+		book.Pages = pages
 		err := booksDAO.NewBook(book)
 		if err != nil {
 			parser.Logger.Error("failed creating new book", zap.Error(err))

@@ -70,8 +70,8 @@ func (s *BooksDAO) GetBookForID(id int) (*dto.Books, error) {
 }
 
 func (s *BooksDAO) UpdateBook(book *dto.Books, userId int) error {
-	query := "update manga_library.books set cover_img = ?, chapter=?, volume=?,name=?,description=?,is_public=?,views=?,downloads=? where id = ? and user = ?"
-	_, err := s.DB.Exec(query, book.CoverImage, book.Chapter, book.Volume, book.Name, book.Description, book.Public, book.Views, book.Downloads, book.ID, userId)
+	query := "update manga_library.books set cover_img = ?, chapter=?, volume=?,name=?,description=?,is_public=?,views=?,downloads=?,pages=? where id = ? and user_id = ?"
+	_, err := s.DB.Exec(query, book.CoverImage, book.Chapter, book.Volume, book.Name, book.Description, book.Public, book.Views, book.Downloads, book.Pages, book.ID, userId)
 	if err != nil {
 		return err
 	}
@@ -146,10 +146,9 @@ func (s *BooksDAO) GetDistinctBooks(userId int) ([]*dto.Books, error) {
 	output := []*dto.Books{}
 	tmpMap := map[string]string{}
 	for _, b := range bookList {
-		if _, found := tmpMap[b.Name]; !found {
-			output = append(output, b)
-			tmpMap[b.Name] = ""
-		}
+		output = append(output, b)
+		tmpMap[b.Name] = ""
+
 	}
 	return output, nil
 }
