@@ -2,9 +2,9 @@ package api
 
 import (
 	"MangaLibrary/src/internal/dao"
-	"MangaLibrary/src/internal/driver"
 	"MangaLibrary/src/internal/dto"
 	"MangaLibrary/src/internal/jobs"
+	"MangaLibrary/src/internal/timezone"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func StartJob(c *driver.Component, job *jobs.Job, logger *zap.Logger, jobDAO *dao.JobDAO) error {
+func StartJob(c *jobs.Component, job *jobs.Job, logger *zap.Logger, jobDAO *dao.JobDAO) error {
 	var wg sync.WaitGroup
 	var err error
 	wg.Add(2)
@@ -35,9 +35,10 @@ func StartJob(c *driver.Component, job *jobs.Job, logger *zap.Logger, jobDAO *da
 			}
 
 		}
-		job.EstFinish = time.Now()
-		job.StartTime = time.Now()
-		job.LastUpdate = time.Now()
+		currentTime, _ := timezone.GetTime("PST")
+		job.EstFinish = currentTime
+		job.StartTime = currentTime
+		job.LastUpdate = currentTime
 		switch job.Ctx.Type {
 		case "download":
 			logger.Info("downloading job")
@@ -79,10 +80,9 @@ func StartJob(c *driver.Component, job *jobs.Job, logger *zap.Logger, jobDAO *da
 		wg.Done()
 	}()
 	wg.Wait()
-	job.UpdateDB(jobDAO)
 	return err
 }
-func ProcessJob(c *driver.Component, job *jobs.Job, logger *zap.Logger, jobDAO *dao.JobDAO) error {
+func ProcessJob(c *jobs.Component, job *jobs.Job, logger *zap.Logger, jobDAO *dao.JobDAO) error {
 	newParser := WebParser.NewParser(logger)
 	err := c.LoadSiteData(newParser, job, "", jobDAO)
 	if err != nil {

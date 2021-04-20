@@ -4,9 +4,9 @@ import (
 	"MangaLibrary/src/internal/dao"
 	"MangaLibrary/src/internal/dto"
 	"MangaLibrary/src/internal/jobs"
+	"MangaLibrary/src/internal/timezone"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -41,6 +41,16 @@ func (h JobHandler) NewJob(w http.ResponseWriter, r *http.Request) {
 		SendError(err.Error(), w)
 		return
 	}
+	if user.CurrentJobs >= user.MaxJobs && user.MaxJobs != -1 {
+		SendError("user has hit max number of jobs", w)
+		return
+	}
+	user.CurrentJobs += 1
+	err = h.User.UpdateUser(user)
+	if err != nil {
+		SendError(err.Error(), w)
+		return
+	}
 	if site.MinAge > user.Age {
 		SendError("to young to view this data", w)
 		return
@@ -60,15 +70,16 @@ func (h JobHandler) NewJob(w http.ResponseWriter, r *http.Request) {
 		SendError(err.Error(), w)
 		return
 	}
+	_, currentTime := timezone.GetTime("PST")
 	newJob := &dto.Job{
 		UserID:          user.ID,
 		SiteID:          site.ID,
 		Name:            jobReq.JobName,
 		JobContext:      string(strCtx),
-		StartTime:       time.Now().Format("2006-01-02 3:04PM"),
+		StartTime:       currentTime,
 		CurrentProgress: 0,
 		TotalProgress:   0,
-		EstFinish:       time.Now().Format("2006-01-02 3:04PM"),
+		EstFinish:       currentTime,
 		Message:         "waiting",
 		CurrentJobData:  "{}",
 	}

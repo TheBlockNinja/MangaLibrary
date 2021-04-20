@@ -2,6 +2,11 @@ package dto
 
 type Books struct {
 	ID          int    `db:"id" json:"id"`
+	SiteID      int    `db:"site_id" json:"site_id"`
+	SiteName    string `db:"site_name" json:"site_name"`
+	Public      bool   `db:"is_public" json:"is_public"`
+	Views       int    `db:"views" json:"views"`
+	Downloads   int    `db:"downloads" json:"downloads"`
 	UserID      int    `db:"user_id" json:"user_id"`
 	JobId       int    `db:"job_id" json:"job_id"`
 	Chapter     string `db:"chapter" json:"chapter"`

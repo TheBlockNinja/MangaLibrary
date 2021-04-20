@@ -4,19 +4,21 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/go-sql-driver/mysql"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
 
-func GetDB() (*sqlx.DB, error) {
+func GetDB(c *cli.Context) (*sqlx.DB, error) {
 	config := mysql.Config{
 		AllowNativePasswords: true,
-		User:                 "root",
-		Passwd:               "password",
+		User:                 c.String("mysql-user"),
+		Passwd:               c.String("mysql-password"),
 		Net:                  "tcp",
-		Addr:                 "mysql:3306",
+		Addr:                 fmt.Sprintf("%s:%s", c.String("mysql-host"), c.String("mysql-port")),
 	}
 	db, err := sqlx.Open("mysql", config.FormatDSN())
 	if err != nil {

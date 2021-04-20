@@ -1,9 +1,8 @@
-package driver
+package jobs
 
 import (
 	"MangaLibrary/src/internal/dao"
 	"MangaLibrary/src/internal/dto"
-	"MangaLibrary/src/internal/jobs"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -55,7 +54,7 @@ func (c *Component) FindID(id int) *Component {
 	return nil
 }
 
-func (c *Component) LoadSiteData(parser *WebParser.Parser, job *jobs.Job, newURL string, jobDAO *dao.JobDAO) error {
+func (c *Component) LoadSiteData(parser *WebParser.Parser, job *Job, newURL string, jobDAO *dao.JobDAO) error {
 	var err error
 	/*
 		If Data already exists
@@ -95,9 +94,9 @@ func (c *Component) LoadSiteData(parser *WebParser.Parser, job *jobs.Job, newURL
 	if !didLoad || job.TotalProgress == 0 {
 		job.TotalProgress += c.ElementData.GetLength(parser)
 		fmt.Printf("JOB(%d/%d)\n", job.CurrentProgress, job.TotalProgress)
-		if jobDAO != nil {
-			job.UpdateDB(jobDAO)
-		}
+
+		job.UpdateDB(jobDAO)
+
 	}
 
 	if len(c.Siblings) > 0 {
@@ -109,6 +108,14 @@ func (c *Component) LoadSiteData(parser *WebParser.Parser, job *jobs.Job, newURL
 			if err != nil {
 				return err
 			}
+		}
+		metadata := c.GetAllMetaData()
+		var value string
+		value = FindInMetaData(metadata, "name")
+		if value != "" {
+			job.Name = value
+			parser.Logger.Info("updating job name..")
+			job.UpdateDB(jobDAO)
 		}
 	}
 	if len(c.Children) > 0 {
@@ -164,32 +171,11 @@ func (c *Component) LoadSiteData(parser *WebParser.Parser, job *jobs.Job, newURL
 						job.CurrentProgress += 1
 
 						job.UpdateTime()
-						if jobDAO != nil {
-							job.UpdateDB(jobDAO)
-						}
+						job.UpdateDB(jobDAO)
 
 					}
 
 				}
-
-				// old
-				//links, err := c.ElementData.GetLinks(parser, c)
-				//if err != nil {
-				//	return err
-				//}
-				//for _, link := range links {
-				//	childParser := &WebParser.Parser{}
-				//	if !c.ElementData.HasURL(link) {
-				//		childParser.URL = link
-				//		err = child.LoadSiteData(childParser, job, link)
-				//		if err != nil {
-				//			return err
-				//		}
-				//		job.CurrentProgress += 1
-				//		job.UpdateTime()
-				//	}
-				//
-				//}
 			} else {
 				/*
 					Add support for child object without link data
@@ -216,17 +202,18 @@ func (c *Component) LoadSiteData(parser *WebParser.Parser, job *jobs.Job, newURL
 	return nil
 }
 
-func (c *Component) Download(parser *WebParser.Parser, basePath string, job *jobs.Job, jobDAO *dao.JobDAO, book *dto.Books) error {
+func (c *Component) Download(parser *WebParser.Parser, basePath string, job *Job, jobDAO *dao.JobDAO, book *dto.Books) error {
 	metadata := c.GetAllMetaData()
 	var value string
 	value = FindInMetaData(metadata, "name")
 	if value != "" {
 		book.Name = value
-		d, err := json.Marshal(c.GetAllMetaData())
+		d, err := json.Marshal(metadata)
 		if err != nil {
 			parser.Logger.Error("failed getting all meta data", zap.Error(err))
 		}
 		book.Metadata = string(d)
+		book.Description = FindInMetaData(metadata, "description")
 	}
 	//if value == "" {
 	//	value = FindInMetaData(metadata, "volume")
@@ -257,25 +244,35 @@ func (c *Component) Download(parser *WebParser.Parser, basePath string, job *job
 }
 
 func FindInMetaData(metadata []map[string]*MetaData, value string) string {
+	shortest := ""
 	for _, d := range metadata {
 		if v, found := d[value]; found {
 			name := v.Data
-			if name != "" {
-				return name
+			if name != "" && (len(name) < len(shortest) || shortest == "") {
+				shortest = name
 			}
 
 		}
 	}
-	return ""
+	return shortest
 }
 
+func (c *Component) GetAllSiblingMetaData() []map[string]*MetaData {
+	output := []map[string]*MetaData{}
+	for _, sibling := range c.Siblings {
+		output = append(output, sibling.ElementData.GetAllMetaData()...)
+	}
+	return output
+}
 func (c *Component) GetAllMetaData() []map[string]*MetaData {
 	output := c.ElementData.GetAllMetaData()
-	for _, child := range c.Children {
-		output = append(output, child.GetAllMetaData()...)
-	}
+	bytes, _ := json.Marshal(output)
+	fmt.Printf("META DATA:%s\n", string(bytes))
 	for _, sibling := range c.Siblings {
 		output = append(output, sibling.GetAllMetaData()...)
+	}
+	for _, child := range c.Children {
+		output = append(output, child.GetAllMetaData()...)
 	}
 	return output
 }
